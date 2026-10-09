@@ -53,6 +53,16 @@ In **Voice space → Configure**, check services, choose an installed Piper voic
 
 Official setup references: [whisper.cpp](https://github.com/ggml-org/whisper.cpp) and its [HTTP server API](https://github.com/ggml-org/whisper.cpp/blob/master/examples/server/README.md); [maintained Piper](https://github.com/OHF-Voice/piper1-gpl), [HTTP API](https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/API_HTTP.md), and [voice licensing guidance](https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/VOICES.md).
 
+## Optional local face landmarks
+
+Open **Face analysis** to try an optional MediaPipe Face Landmarker visualization. The camera is off by default and is requested only after the user confirms the explanation and enables the camera. The feature locates facial landmarks; it does not identify people or infer feelings, intent, personality, or health. The preview, mesh, and smoothed movement descriptions are independent controls. Camera tracks and the worker stop when the user turns the camera off, leaves the page, or closes the session. Face frames and landmarks are transient and never written to browser storage.
+
+`@mediapipe/tasks-vision` 1.1.0 is installed from npm. The runtime WASM assets from that package and the official float16 Face Landmarker bundle are stored under `public/mediapipe/wasm/` and `public/mediapipe/models/face_landmarker.task`. The model was acquired from Google's [official Face Landmarker model bundle](https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task), currently 3,758,596 bytes. Runtime uses the package's `FilesetResolver.forVisionTasks("/mediapipe/wasm")`, `FaceLandmarker.createFromOptions`, `runningMode: "VIDEO"`, and `detectForVideo`; no CDN or third-party runtime fetch is used. The worker owns detection because video inference is synchronous; only temporary normalized coordinates are returned to draw the mesh, and only coarse movement labels are kept in page state.
+
+Expression indicators are off by default and use documented blendshape coefficients only to label observable smile-related or brow movements. Smoothed scores are never saved. The separate **Share expression summary with my AI companion** consent is off by default; even when enabled, the user must press **Send optional summary to local AI**. That sends only a short text summary through the existing loopback Ollama chat relay, not camera frames, images, or landmarks. The response is shown transiently in Face analysis and is not saved to chat history, memory, journal, export, or analytics. The user should confirm or reject any suggestion in their own words.
+
+The local assets are included in this repository so they are available after installation without internet access. Camera use requires browser permission and localhost or HTTPS. For the model and runtime details, see the [official Face Landmarker Web guide](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker/web_js) and [model overview](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker).
+
 ## Checks
 
 ```sh

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Activity, ArrowRight, AudioLines, Brain, ChevronRight, CircleHelp, Clock3, Compass, Heart, Home, LockKeyhole, MessageCircle, Mic, Moon, PenLine, Plus, Settings, ShieldCheck, Sparkles, Sun, Waves, X } from "lucide-react";
 import { AssistantSettings, LocalChat } from "@/components/local-chat";
 import { VoiceSpace } from "@/components/voice-space";
+import { FaceAnalysis } from "@/components/face-analysis";
 
 const items = [
   { id: "dashboard", label: "Overview", icon: Home, href: "/" },
@@ -80,6 +81,7 @@ function Section({ section, message, setMessage, say, toggles, flip }: { section
   if (section === "chat") return <><h1 className="heading">{title}</h1><p className="subheading">{description}</p><div style={{ marginTop: 26 }}><LocalChat/></div></>;
   if (section === "settings") return <><h1 className="heading">{title}</h1><p className="subheading">{description}</p><div style={{ marginTop: 26 }}><AssistantSettings/></div></>;
   if (section === "voice") return <><h1 className="heading">{title}</h1><p className="subheading">{description}</p><div style={{ marginTop: 26 }}><VoiceSpace/></div></>;
+  if (section === "face-analysis") return <><h1 className="heading">{title}</h1><p className="subheading">{description}</p><div style={{ marginTop: 26 }}><FaceAnalysis/></div></>;
   return <><h1 className="heading">{title}</h1><p className="subheading">{description}</p><div style={{ marginTop: 26 }}>
     {section === "chat" && <div className="card chatbox"><div className="card-head"><div className="card-title"><MessageCircle size={17}/> Private conversation</div><span className="status"><i className="dot"/> Model unavailable</span></div><div className="chat-messages"><div className="empty" style={{ maxWidth: 430 }}><Sparkles size={19}/><strong>Your conversation starts here</strong>Connect a local model in settings before chatting. Your messages won’t leave this device.</div></div><form className="chat-input" onSubmit={(e) => { e.preventDefault(); say("Connect a local model in AI & privacy settings to start chatting."); setMessage(""); }}><input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Write what’s on your mind…" aria-label="Your message"/><button className="icon-btn" type="submit" aria-label="Send message"><ArrowRight size={16}/></button></form></div>}
     {section === "voice" && <div className="card" style={{ textAlign: "center", padding: "52px 24px" }}><div className="brand-icon" style={{ width: 64, height: 64, borderRadius: 21, margin: "0 auto 19px" }}><AudioLines size={26}/></div><strong style={{ display: "block", fontSize: 16 }}>Voice tools aren’t connected yet</strong><p className="muted smalltext" style={{ maxWidth: 370, margin: "7px auto 20px" }}>Speech recognition and voice playback will run in your browser when a compatible provider is available.</p><button className="button" onClick={() => say("Speech recognition is unavailable in this build.")}><Mic size={15}/> Voice unavailable</button></div>}
