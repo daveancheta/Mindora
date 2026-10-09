@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const modelResponse = await ollamaFetch(input.endpoint, "/api/chat", {
       method: "POST", signal,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: input.model, stream: true, messages: [{ role: "system", content: buildSystemPrompt(input.style, input.memories) }, ...input.messages] }),
+      body: JSON.stringify({ model: input.model, stream: true, messages: [{ role: "system", content: buildSystemPrompt(input.style, input.memories, input.responseLength) }, ...input.messages] }),
     }, 180_000);
     if (!modelResponse.ok) return NextResponse.json({ error: `Ollama could not generate a response (${modelResponse.status}). Check that the model is ready and try again.` }, { status: 502 });
     if (!modelResponse.body) throw new OllamaError("Ollama returned no response stream.");

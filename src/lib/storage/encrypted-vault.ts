@@ -1,4 +1,6 @@
 import { DEFAULT_VAULT, type VaultData } from "@/lib/chat/types";
+import { z } from "zod";
+import { journalEntrySchema, moodEntrySchema, personalityDraftSchema, personalityRunSchema } from "@/lib/personal/schemas";
 
 const DB_NAME = "mindspace-private-vault";
 const STORE = "sealed-record";
@@ -54,7 +56,12 @@ export async function readVault(key: CryptoKey): Promise<VaultData> {
   try {
     const raw = JSON.parse(new TextDecoder().decode(await decrypt(key, record.iv, record.data))) as Partial<VaultData>;
     if (!Array.isArray(raw.conversations) || !Array.isArray(raw.memories) || typeof raw.memoryEnabled !== "boolean") throw new Error();
-    return raw as VaultData;
+    const journalEntries = z.array(journalEntrySchema).max(1000).safeParse(raw.journalEntries ?? []);
+    const moodEntries = z.array(moodEntrySchema).max(1000).safeParse(raw.moodEntries ?? []);
+    const personalityDraft = raw.personalityDraft === null || raw.personalityDraft === undefined ? { success: true as const, data: null } : personalityDraftSchema.safeParse(raw.personalityDraft);
+    const personalityRuns = z.array(personalityRunSchema).max(100).safeParse(raw.personalityRuns ?? []);
+    if (!journalEntries.success || !moodEntries.success || !personalityDraft.success || !personalityRuns.success) throw new Error();
+    return { ...DEFAULT_VAULT, ...raw, journalEntries: journalEntries.data, moodEntries: moodEntries.data, personalityDraft: personalityDraft.data, personalityRuns: personalityRuns.data } as VaultData;
   } catch { throw new Error("The encrypted vault could not be read. Your data has not been changed."); }
 }
 export async function writeVault(key: CryptoKey, vault: VaultData) {

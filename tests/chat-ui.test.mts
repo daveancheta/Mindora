@@ -5,10 +5,12 @@ import { JSDOM } from "jsdom";
 import { after, test } from "node:test";
 import React from "react";
 import { permanentlyDeleteVault, readVault, unlockVault } from "../src/lib/storage/encrypted-vault.ts";
+import { lockVaultSession } from "../src/lib/storage/vault-session.ts";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "http://127.0.0.1:3000/chat" });
 Object.defineProperties(globalThis, {
   window: { value: dom.window, configurable: true }, document: { value: dom.window.document, configurable: true },
+  Event: { value: dom.window.Event, configurable: true },
   navigator: { value: dom.window.navigator, configurable: true }, HTMLElement: { value: dom.window.HTMLElement, configurable: true },
   Node: { value: dom.window.Node, configurable: true }, MutationObserver: { value: dom.window.MutationObserver, configurable: true }, localStorage: { value: dom.window.localStorage, configurable: true },
   crypto: { value: webcrypto, configurable: true }, IS_REACT_ACT_ENVIRONMENT: { value: true, writable: true, configurable: true },
@@ -62,6 +64,7 @@ test("chat UI reports a stopped Ollama service without enabling message sending"
   assert.equal((screen.getByRole("textbox", { name: "Your message" }) as HTMLTextAreaElement).disabled, true);
   cleanup();
   container.remove();
+  lockVaultSession();
   await permanentlyDeleteVault();
 });
 
@@ -86,6 +89,7 @@ test("a conversation streams, persists encrypted, and can be recovered after rem
   assert.match(saved.conversations[0]!.messages[1]!.content, /How has your day been/);
 
   cleanup(); container.remove();
+  lockVaultSession();
   const restoredContainer = render(React.createElement(LocalChat)).container;
   const password = await screen.findByLabelText("Vault passphrase");
   fireEvent.change(password, { target: { value: passphrase } });
@@ -93,7 +97,7 @@ test("a conversation streams, persists encrypted, and can be recovered after rem
   await screen.findByRole("button", { name: "Copy response" });
   assert.match(document.querySelector(".markdown")?.textContent ?? "", /Hey, hello! How has your day been/);
   assert.ok(screen.getAllByText("I finally finished my garden project").length >= 1);
-  cleanup(); restoredContainer.remove();
+  cleanup(); restoredContainer.remove(); lockVaultSession();
   await permanentlyDeleteVault();
 });
 

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, AlertTriangle, Camera, CameraOff, Check, EyeOff, MessageCircle, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import { FaceLandmarker } from "@mediapipe/tasks-vision";
-import type { LocalSettings } from "@/lib/chat/types";
+import { DEFAULT_SETTINGS, type LocalSettings } from "@/lib/chat/types";
 import { describeMovements, optionalSummary, type BlendshapeScore } from "@/lib/face/signals";
 
 type Preferences = { preview: boolean; mesh: boolean; indicators: boolean; shareWithAi: boolean; frequency: number };
@@ -12,7 +12,7 @@ const DEFAULT_PREFERENCES: Preferences = { preview: true, mesh: false, indicator
 const PREF_KEY = "mindspace.face-preferences.v1";
 const SETTINGS_KEY = "mindspace.local-settings.v1";
 function loadPrefs(): Preferences { try { return { ...DEFAULT_PREFERENCES, ...JSON.parse(localStorage.getItem(PREF_KEY) ?? "{}") }; } catch { return DEFAULT_PREFERENCES; } }
-function localAiSettings(): LocalSettings { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "null") ?? { endpoint: "http://127.0.0.1:11434", model: "", style: "friendly" }; } catch { return { endpoint: "http://127.0.0.1:11434", model: "", style: "friendly" }; } }
+function localAiSettings(): LocalSettings { try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}") }; } catch { return DEFAULT_SETTINGS; } }
 
 export function FaceAnalysis() {
   const [prefs, setPrefs] = useState(DEFAULT_PREFERENCES); const prefsRef = useRef(prefs); const [consent, setConsent] = useState(false);
@@ -124,7 +124,7 @@ export function FaceAnalysis() {
       if (!available.ok || !model) throw new Error("Connect Ollama and select a local model in AI & privacy settings first.");
       const summary = optionalSummary(movements.filter((item) => item !== "Signal uncertain").map((item) => item.toLowerCase()) as Parameters<typeof optionalSummary>[0]);
       const content = `Optional, uncertain observable facial-movement context: ${summary} These movements do not reveal how I feel. Please ask how I am feeling; do not infer or diagnose an emotion.`;
-      const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json", Accept: "text/event-stream" }, body: JSON.stringify({ endpoint: localSettings.endpoint, model, style: localSettings.style, messages: [{ role: "user", content }], memories: [] }) });
+      const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json", Accept: "text/event-stream" }, body: JSON.stringify({ endpoint: localSettings.endpoint, model, style: localSettings.style, responseLength: localSettings.responseLength, messages: [{ role: "user", content }], memories: [] }) });
       if (!response.ok || !response.body) { const result = await response.json().catch(() => ({})) as { error?: string }; throw new Error(result.error ?? "Your local AI companion is unavailable."); }
       const reader = response.body.getReader(); const decoder = new TextDecoder(); let pending = ""; let answer = "";
       while (true) { const { done, value } = await reader.read(); if (done) break; pending += decoder.decode(value, { stream: true }); let split: number; while ((split = pending.indexOf("\n\n")) >= 0) { const frame = pending.slice(0, split); pending = pending.slice(split + 2); const line = frame.split("\n").find((part) => part.startsWith("data: ")); if (!line) continue; const entry = JSON.parse(line.slice(6)) as { token?: string; error?: string }; if (entry.error) throw new Error(entry.error); if (entry.token) { answer += entry.token; setAiReply(answer); } } }

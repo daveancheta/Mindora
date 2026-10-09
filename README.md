@@ -73,3 +73,66 @@ npm run build
 ```
 
 To test the full API workflow with a running local Ollama instance and the installed `llama3.2:latest` model, start `npm run dev` in one terminal and run `npm run test:chat` in another. The test sends only a short synthetic greeting prompt to the local model.
+
+## Phase 5: reflection tools and offline readiness
+
+The `/personality`, `/mood`, `/journal`, `/wellness`, `/settings`, and `/offline` pages now use local features rather than demo placeholders. The 60-item `mindspace-preferences-60-v1` assessment uses original prompts and deterministic scoring; it is an illustrative self-reflection tool, not a validated psychological instrument or diagnosis. Mood trends summarize only saved user entries. Wellness activities are optional, stoppable exercises and are not treatment.
+
+Journal and mood notes are never read automatically by chat. A user must enable the matching sharing setting and then explicitly press the one-time reflection action on a selected item. Only that selected text/record is sent to this app's loopback Ollama relay. The result is transient, not saved into history. Expression summaries remain separately opt-in. Conversation memory is separately enabled and user-authored. Every setting can be turned off again.
+
+All conversations, memories, assessment answers/results, journal entries, and mood check-ins are serialized into one record in the browser profile's IndexedDB database `mindspace-private-vault` and encrypted in the browser with AES-256-GCM using the passphrase-derived key described above. Personal data is held in the tab's memory after unlock and written encrypted. Clearing the vault removes that database and local AI/voice/face preferences. Export/import is an explicit plaintext JSON backup: anyone with access to that export can read it. Browser encryption does not protect data from a compromised device, browser, extension, or unlocked tab.
+
+### Offline setup on Windows
+
+Use Node.js 24.x and npm 12.x (the versions used during this phase). In PowerShell, from the repository folder:
+
+```powershell
+npm ci
+npm run dev
+```
+
+The app binds to `127.0.0.1:3000`. To use chat offline, install Ollama and explicitly acquire a model while online; MindSpace does not download it:
+
+```powershell
+ollama pull llama3.2:latest
+ollama list
+```
+
+The installed `llama3.2:latest` model was present during this implementation. The larger `gemma4:26b` was also present, but it is not a suggested starting model for the listed 16 GB RAM / RTX 4050 4 GB machine. Keep the Ollama service bound to loopback.
+
+The optional private server variables are `OLLAMA_ALLOWED_PORTS` (default `11434`), `WHISPER_ALLOWED_PORTS` (default `8080`), and `PIPER_ALLOWED_PORTS` (default `5000`). They are comma-separated port allow-lists for services bound to `127.0.0.1`; they do not select models or download anything. No AI provider secret or cloud credential is used.
+
+The `dev`, `build`, and `start` npm scripts set `NEXT_TELEMETRY_DISABLED=1` through `cross-env`; the app does not opt into Next.js CLI telemetry.
+
+Voice prerequisites are separate from Ollama. This machine did not have `whisper-server`, `whisper-cli`, `piper`, or `ffmpeg` installed at implementation time, so voice readiness reports unavailable until the user installs them. Follow the voice section above to install Whisper.cpp and Piper and explicitly obtain local speech assets. The illustrative Whisper `base` model uses about 388 MB RAM in the project documentation; actual speed and quality vary. Piper voice files have individual licenses; review each voice model card before use. The app will not fetch any speech model or voice. Text chat remains usable when either speech service is missing.
+
+MediaPipe is self-contained in this repository after npm installation: runtime files are in `public/mediapipe/wasm/`, with the Face Landmarker task file in `public/mediapipe/models/`. The npm package, WASM, and model are local; camera access still requires browser permission and localhost/HTTPS.
+
+Open `/offline` to check the local app assets, MediaPipe model/WASM, IndexedDB availability, Ollama model/service, Whisper.cpp, and Piper independently. “Browser network state” uses `navigator.onLine`; it is not a packet capture or proof that the whole machine has no network traffic. The app currently has no service worker, so the local Next.js server must be running even when the computer has no internet connection. `npm ci` and initial model/runtime acquisition require internet access. Windows microphone/camera device drivers and OS permissions remain local operating-system prerequisites.
+
+### Data flow and boundary
+
+```mermaid
+flowchart LR
+  UI[Browser UI] -->|same-origin local HTTP| Next[Next.js on 127.0.0.1:3000]
+  UI -->|AES-GCM encrypted record| IDB[(Browser IndexedDB)]
+  Next -->|validated loopback only| Ollama[Ollama on 127.0.0.1:11434]
+  UI -->|camera frames in worker only| MP[Bundled MediaPipe WASM/model]
+  UI -->|temporary audio| Whisper[Optional Whisper.cpp on loopback]
+  Next -->|response text| Piper[Optional Piper on loopback]
+```
+
+The intended runtime requests are same-origin app/API requests plus server-side requests to explicitly allowed loopback Ollama/Whisper/Piper endpoints. MediaPipe fetches same-origin model/WASM files. User-clickable official setup/documentation links are present in the UI and README; they navigate externally only when selected and are not asset or API dependencies. The codebase contains no analytics or telemetry SDK, external AI provider, external font, remote image, or CDN runtime import. Vendored MediaPipe WASM contains upstream references in comments/licenses, not runtime endpoints. API route requests are origin checked, bounded, rate limited, and do not log prompts or recordings. The browser diagnostic performs same-origin checks; this is not equivalent to a Windows firewall capture. For a strict network audit, capture traffic with Windows Firewall/WFP or Wireshark while exercising the app; that capture was not available during this phase. No zero-network-traffic claim is made.
+
+`npm audit --omit=dev` reported no production dependency advisories. `npm audit` still reports nine advisories in the existing Tailwind 3 / ESLint development dependency tree; npm's suggested automatic remediation upgrades to Tailwind 4, which would be a breaking stack change, so it was not applied in this phase.
+
+To reproduce the checks:
+
+```powershell
+npm run typecheck
+npm run lint
+npm test
+npm run build
+```
+
+For the additional real local-model smoke test, run `npm run dev` in one PowerShell window and `npm run test:chat` in another. End-to-end device testing of microphone capture, audible playback, camera permission, and truly disconnected network operation requires the optional speech programs/models and physical/browser devices; the available automated tests mock those hardware boundaries.

@@ -15,6 +15,7 @@ export const chatRequestSchema = z.object({
   endpoint: endpointSchema,
   model: z.string().trim().min(1).max(128).regex(/^[\w][\w.:/@+-]*$/),
   style: z.enum(["friendly", "calm", "thoughtful", "encouraging"]),
+  responseLength: z.enum(["concise", "detailed"]).default("concise"),
   messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1).max(8000) }).strict()).min(1).max(80),
   memories: z.array(z.string().trim().min(1).max(400)).max(20).default([]),
 }).strict().superRefine((value, ctx) => {
