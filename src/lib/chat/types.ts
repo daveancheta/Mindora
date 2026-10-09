@@ -1,0 +1,9 @@
+export type MessageRole = "user" | "assistant";
+export type FriendStyle = "friendly" | "calm" | "thoughtful" | "encouraging";
+export type ChatMessage = { id: string; role: MessageRole; content: string; createdAt: string; error?: string };
+export type Conversation = { id: string; title: string; createdAt: string; updatedAt: string; messages: ChatMessage[] };
+export type Memory = { id: string; text: string; updatedAt: string };
+export type VaultData = { conversations: Conversation[]; memories: Memory[]; memoryEnabled: boolean };
+export type LocalSettings = { endpoint: string; model: string; style: FriendStyle };
+export const DEFAULT_VAULT: VaultData = { conversations: [], memories: [], memoryEnabled: false };
+export const DEFAULT_SETTINGS: LocalSettings = { endpoint: "http://127.0.0.1:11434", model: "", style: "friendly" };
