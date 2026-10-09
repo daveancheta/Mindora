@@ -27,6 +27,32 @@ The server does not store conversations. For each chat request, the browser send
 
 The app only checks installed models and streams chat. It never invokes Ollama model download/delete operations and never falls back to cloud inference. By default, only port `11434` is accepted. For an intentionally custom local Ollama port, configure a private server environment variable such as `OLLAMA_ALLOWED_PORTS=11434,11435`; the browser setting must still use a loopback IP and an allowed port. Ensure the Ollama model itself is local and use Ollama's own controls for its service exposure.
 
+## Local voice mode (push to talk)
+
+Voice mode uses a batch local pipeline: microphone recording in the browser → Whisper.cpp local HTTP server → the same loopback Ollama chat API → Piper local HTTP server → browser audio playback. No Web Speech API, cloud speech services, or analytics are used. Audio is held in memory until sent to the configured Whisper.cpp loopback service and is not written to IndexedDB or server files. The editable transcript and voice turns currently remain in the active tab only; use the encrypted Chat workspace for saved conversations. Text chat remains usable when speech services are missing.
+
+Install speech software and acquire speech models/voices yourself; MindSpace does not download them. For this PC (Ryzen 7 7435HS, 16 GB RAM, RTX 4050 4 GB), Whisper.cpp `base` is a reasonable starting point; its project lists about 388 MB RAM for base and supports CPU/GPU builds. Start its server bound only to loopback with an explicitly installed ggml model, for example:
+
+```powershell
+whisper-server --host 127.0.0.1 --port 8080 --convert -m C:\models\ggml-base.bin
+```
+
+Whisper.cpp `--convert` requires `ffmpeg` so browser WebM/MP4 recordings can be decoded.
+
+Install maintained Piper and its HTTP extra in a Python environment, then obtain a voice explicitly. Review that voice’s model card because voice licenses vary. Start Piper bound to loopback:
+
+```powershell
+python -m pip install "piper-tts[http]"
+python -m piper.download_voices --data-dir C:\models\piper en_US-lessac-medium
+python -m piper.http_server -m en_US-lessac-medium --data-dir C:\models\piper --host 127.0.0.1 --port 5000
+```
+
+The Piper command above only downloads when you run it manually. MindSpace checks Whisper.cpp at its root address and Piper’s `/voices`, sends recordings only to Whisper.cpp `/inference`, and sends response text only to Piper `/synthesize`. It accepts loopback IPs only and by default allows Whisper port `8080` and Piper port `5000`; if you intentionally choose other ports, set private server variables `WHISPER_ALLOWED_PORTS` and/or `PIPER_ALLOWED_PORTS` to comma-separated ports before starting Next.js. Do not expose the Next.js, Whisper.cpp, Piper, or Ollama services to your network.
+
+In **Voice space → Configure**, check services, choose an installed Piper voice and Ollama model, then press the microphone button to record. Silence for about 1.8 seconds after speech ends a turn; recordings are capped at 30 seconds. Review or edit the transcript before sending. Synthesis is batch-based; the reply text appears while Piper generates the WAV. Stop interrupts playback or the active model request. Browser microphone access requires localhost or HTTPS. Offline operation works after all required software, local assets, and Ollama models are installed; service/API builds alone cannot verify speaker hardware or acoustic quality. Piper is GPL-3.0 software, and each voice has its own license terms.
+
+Official setup references: [whisper.cpp](https://github.com/ggml-org/whisper.cpp) and its [HTTP server API](https://github.com/ggml-org/whisper.cpp/blob/master/examples/server/README.md); [maintained Piper](https://github.com/OHF-Voice/piper1-gpl), [HTTP API](https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/API_HTTP.md), and [voice licensing guidance](https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/VOICES.md).
+
 ## Checks
 
 ```sh
